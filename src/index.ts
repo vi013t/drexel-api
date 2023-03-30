@@ -1,18 +1,18 @@
 // @ts-ignore
 import drexelJSON from "./drexel.json" assert { type: "json" };
 
-type SinglePrerequisite = {
+export type SinglePrerequisite = {
     codeName: string;
     minimumGrade: string;
 };
 
-type Prerequisite = SinglePrerequisite | PrerequisiteOption | string;
+export type Prerequisite = SinglePrerequisite | PrerequisiteOption | string;
 
-type PrerequisiteOption = {
+export type PrerequisiteOption = {
     oneOf: Prerequisite[];
 };
 
-type Course = {
+export type Course = {
     codeName: string;
     properName: string;
     credits: number;
@@ -20,18 +20,18 @@ type Course = {
     prerequisites: Prerequisite[];
 };
 
-type Major = {
+export type Major = {
     name: string;
     courses: Course[];
     collegeName: string;
 };
 
-type College = {
+export type College = {
     name: string;
     majors: Major[];
 };
 
-type Drexel = {
+export type Drexel = {
     colleges: College[];
 };
 
@@ -55,8 +55,8 @@ export function courseWith(properties: Partial<Course>): Course | null {
     drexel.colleges.some(college => {
         return college.majors.some(major => {
             return major.courses.some(course => {
-                if ((Object.keys(properties) as (keyof Course)[]).filter(property => property).every(property => {
-                    course[property] === properties[property]
+                if ((Object.keys(properties) as (keyof Course)[]).filter(property => properties[property]).every(property => {
+                    return course[property] === properties[property];
                 })) {
                     correctCourse = course;
                     return true;
@@ -86,8 +86,8 @@ export function majorWith(properties: Partial<Major>): Major | null {
     let correctMajor: Major | null = null;
     drexel.colleges.some(college => {
         return college.majors.some(major => {
-            if ((Object.keys(properties) as (keyof Major)[]).filter(property => property).every(property => {
-                major[property] === properties[property]
+            if ((Object.keys(properties) as (keyof Major)[]).filter(property => properties[property]).every(property => {
+                return major[property] === properties[property];
             })) {
                 correctMajor = major;
                 return true;
@@ -115,8 +115,8 @@ export function majorWith(properties: Partial<Major>): Major | null {
 export function collegeWith(properties: Partial<College>): College | null {
     let correctCollege: College | null = null;
     drexel.colleges.some(college => {
-        if ((Object.keys(properties) as (keyof College)[]).filter(property => property).every(property => {
-            college[property] === properties[property]
+        if ((Object.keys(properties) as (keyof College)[]).filter(property => properties[property]).every(property => {
+            return college[property] === properties[property];
         })) {
             correctCollege = college;
             return true;
@@ -166,8 +166,40 @@ export function canTake(course: Course, courses: Course[]): boolean {
  * 
  * `true` if the prerequisite is satsified from passing the given courses, `false` otherwise.
  */
-function prerequisiteIsSatisfied(prerequisite: Prerequisite, courses: Course[]): boolean {
+export function prerequisiteIsSatisfied(prerequisite: Prerequisite, courses: Course[]): boolean {
     if (typeof prerequisite === "string") return true;
     if ("codeName" in prerequisite) return courses.some(course => prerequisite.codeName === course.codeName);
     return prerequisite.oneOf.some(course => prerequisiteIsSatisfied(course, courses));
+}
+
+/**
+ * Returns the prerequisite that is missing in order to satisfy the given course, or `[]` if all prerequisites
+ * are satisfied by the given courses.
+ * 
+ * **Parameters**
+ * ```ts
+ * let course: Course
+ * ```
+ * - The course to check the prerequisites of
+ * ```ts
+ * let courses: Course[]
+ * ```
+ * - The completed courses that may or may not satisfy the prerequisites
+ * 
+ * **Returns**
+ * 
+ * the prerequisites that are yet to be fulfilled by the given courses.
+ */
+export function missingPrerequisites(course: Course, courses: Course[]): Prerequisite[] {
+    let prerequisites: Prerequisite[] = [];
+    course.prerequisites.forEach(prerequisite => {
+        if (typeof prerequisite === "string") return;
+        if ("codeName" in prerequisite) {
+            if (!courses.map(course => course.codeName).includes(prerequisite.codeName)) prerequisites.push(prerequisite);
+            return;
+        }
+        if (!prerequisiteIsSatisfied(prerequisite, courses)) prerequisites.push(prerequisite);
+    });
+
+    return prerequisites;
 }
